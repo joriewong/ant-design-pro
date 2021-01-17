@@ -1,9 +1,8 @@
-import { Effect } from 'dva';
-import { Reducer } from 'redux';
+import type { Effect, Reducer } from 'umi';
 
 import { queryCurrent, query as queryUsers } from '@/services/user';
 
-export interface CurrentUser {
+export type CurrentUser = {
   avatar?: string;
   name?: string;
   title?: string;
@@ -15,13 +14,13 @@ export interface CurrentUser {
   }[];
   userid?: string;
   unreadCount?: number;
-}
+};
 
-export interface UserModelState {
+export type UserModelState = {
   currentUser?: CurrentUser;
-}
+};
 
-export interface UserModelType {
+export type UserModelType = {
   namespace: 'user';
   state: UserModelState;
   effects: {
@@ -32,7 +31,7 @@ export interface UserModelType {
     saveCurrentUser: Reducer<UserModelState>;
     changeNotifyCount: Reducer<UserModelState>;
   };
-}
+};
 
 const UserModel: UserModelType = {
   namespace: 'user',

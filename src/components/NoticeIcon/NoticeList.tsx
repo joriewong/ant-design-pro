@@ -2,10 +2,10 @@ import { Avatar, List } from 'antd';
 
 import React from 'react';
 import classNames from 'classnames';
-import { NoticeIconData } from './index';
+import type { NoticeIconData } from './index';
 import styles from './NoticeList.less';
 
-export interface NoticeIconTabProps {
+export type NoticeIconTabProps = {
   count?: number;
   name?: string;
   showClear?: boolean;
@@ -21,7 +21,7 @@ export interface NoticeIconTabProps {
   viewMoreText?: string;
   list: NoticeIconData[];
   onViewMore?: (e: any) => void;
-}
+};
 const NoticeList: React.SFC<NoticeIconTabProps> = ({
   data = [],
   onClick,
@@ -34,7 +34,7 @@ const NoticeList: React.SFC<NoticeIconTabProps> = ({
   viewMoreText,
   showViewMore = false,
 }) => {
-  if (data.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <div className={styles.notFound}>
         <img
@@ -67,7 +67,9 @@ const NoticeList: React.SFC<NoticeIconTabProps> = ({
             <List.Item
               className={itemCls}
               key={item.key || i}
-              onClick={() => onClick && onClick(item)}
+              onClick={() => {
+                onClick?.(item);
+              }}
             >
               <List.Item.Meta
                 className={styles.meta}
@@ -97,7 +99,7 @@ const NoticeList: React.SFC<NoticeIconTabProps> = ({
         ) : null}
         {showViewMore ? (
           <div
-            onClick={e => {
+            onClick={(e) => {
               if (onViewMore) {
                 onViewMore(e);
               }

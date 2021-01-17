@@ -1,31 +1,28 @@
 /**
  * Ant Design Pro v4 use `@ant-design/pro-layout` to handle Layout.
- * You can view component api by:
- * https://github.com/ant-design/ant-design-pro-layout
+ *
+ * @see You can view component api by: https://github.com/ant-design/ant-design-pro-layout
  */
-
-import ProLayout, {
+import type {
   MenuDataItem,
   BasicLayoutProps as ProLayoutProps,
   Settings,
-  DefaultFooter,
 } from '@ant-design/pro-layout';
-import React, { useEffect } from 'react';
-import { Link } from 'umi';
-import { Dispatch } from 'redux';
-import { connect } from 'dva';
-import { Icon, Result, Button } from 'antd';
-import { formatMessage } from 'umi-plugin-react/locale';
-
+import ProLayout, { DefaultFooter } from '@ant-design/pro-layout';
+import React, { useEffect, useMemo, useRef } from 'react';
+import type { Dispatch } from 'umi';
+import { Link, useIntl, connect, history } from 'umi';
+import { GithubOutlined } from '@ant-design/icons';
+import { Result, Button } from 'antd';
 import Authorized from '@/utils/Authorized';
 import RightContent from '@/components/GlobalHeader/RightContent';
-import { ConnectState } from '@/models/connect';
-import { isAntDesignPro, getAuthorityFromRouter } from '@/utils/utils';
+import type { ConnectState } from '@/models/connect';
+import { getMatchMenu } from '@umijs/route-utils';
 import logo from '../assets/logo.svg';
 
 const noMatch = (
   <Result
-    status="403"
+    status={403}
     title="403"
     subTitle="Sorry, you are not authorized to access this page."
     extra={
@@ -35,38 +32,31 @@ const noMatch = (
     }
   />
 );
-
-export interface BasicLayoutProps extends ProLayoutProps {
-  breadcrumbNameMap: {
-    [path: string]: MenuDataItem;
-  };
+export type BasicLayoutProps = {
+  breadcrumbNameMap: Record<string, MenuDataItem>;
   route: ProLayoutProps['route'] & {
     authority: string[];
   };
   settings: Settings;
   dispatch: Dispatch;
-}
+} & ProLayoutProps;
 export type BasicLayoutContext = { [K in 'location']: BasicLayoutProps[K] } & {
-  breadcrumbNameMap: {
-    [path: string]: MenuDataItem;
-  };
+  breadcrumbNameMap: Record<string, MenuDataItem>;
 };
+/** Use Authorized check all menu item */
 
-/**
- * use Authorized check all menu item
- */
 const menuDataRender = (menuList: MenuDataItem[]): MenuDataItem[] =>
-  menuList.map(item => {
+  menuList.map((item) => {
     const localItem = {
       ...item,
-      children: item.children ? menuDataRender(item.children) : [],
+      children: item.children ? menuDataRender(item.children) : undefined,
     };
     return Authorized.check(item.authority, localItem, null) as MenuDataItem;
   });
 
 const defaultFooterDom = (
   <DefaultFooter
-    copyright="2019 蚂蚁金服体验技术部出品"
+    copyright={`${new Date().getFullYear()} 蚂蚁集团体验技术部出品`}
     links={[
       {
         key: 'Ant Design Pro',
@@ -76,7 +66,7 @@ const defaultFooterDom = (
       },
       {
         key: 'github',
-        title: <Icon type="github" />,
+        title: <GithubOutlined />,
         href: 'https://github.com/ant-design/ant-design-pro',
         blankTarget: true,
       },
@@ -90,36 +80,17 @@ const defaultFooterDom = (
   />
 );
 
-const footerRender: BasicLayoutProps['footerRender'] = () => {
-  if (!isAntDesignPro()) {
-    return defaultFooterDom;
-  }
-  return (
-    <>
-      {defaultFooterDom}
-      <div
-        style={{
-          padding: '0px 24px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <a href="https://www.netlify.com" target="_blank" rel="noopener noreferrer">
-          <img
-            src="https://www.netlify.com/img/global/badges/netlify-color-bg.svg"
-            width="82px"
-            alt="netlify logo"
-          />
-        </a>
-      </div>
-    </>
-  );
-};
+const BasicLayout: React.FC<BasicLayoutProps> = (props) => {
+  const {
+    dispatch,
+    children,
+    settings,
+    location = {
+      pathname: '/',
+    },
+  } = props;
 
-const BasicLayout: React.FC<BasicLayoutProps> = props => {
-  const { dispatch, children, settings, location = { pathname: '/' } } = props;
-  /**
-   * constructor
-   */
+  const menuDataRef = useRef<MenuDataItem[]>([]);
 
   useEffect(() => {
     if (dispatch) {
@@ -128,9 +99,8 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
       });
     }
   }, []);
-  /**
-   * init variables
-   */
+  /** Init variables */
+
   const handleMenuCollapse = (payload: boolean): void => {
     if (dispatch) {
       dispatch({
@@ -140,22 +110,30 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
     }
   };
   // get children authority
-  const authorized = getAuthorityFromRouter(props.route.routes, location.pathname || '/') || {
-    authority: undefined,
-  };
+  const authorized = useMemo(
+    () =>
+      getMatchMenu(location.pathname || '/', menuDataRef.current).pop() || {
+        authority: undefined,
+      },
+    [location.pathname],
+  );
+
+  const { formatMessage } = useIntl();
 
   return (
     <ProLayout
       logo={logo}
-      menuHeaderRender={(logoDom, titleDom) => (
-        <Link to="/">
-          {logoDom}
-          {titleDom}
-        </Link>
-      )}
+      formatMessage={formatMessage}
+      {...props}
+      {...settings}
       onCollapse={handleMenuCollapse}
+      onMenuHeaderClick={() => history.push('/')}
       menuItemRender={(menuItemProps, defaultDom) => {
-        if (menuItemProps.isUrl || menuItemProps.children || !menuItemProps.path) {
+        if (
+          menuItemProps.isUrl ||
+          !menuItemProps.path ||
+          location.pathname === menuItemProps.path
+        ) {
           return defaultDom;
         }
         return <Link to={menuItemProps.path}>{defaultDom}</Link>;
@@ -163,10 +141,7 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
       breadcrumbRender={(routers = []) => [
         {
           path: '/',
-          breadcrumbName: formatMessage({
-            id: 'menu.home',
-            defaultMessage: 'Home',
-          }),
+          breadcrumbName: formatMessage({ id: 'menu.home' }),
         },
         ...routers,
       ]}
@@ -178,12 +153,13 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
           <span>{route.breadcrumbName}</span>
         );
       }}
-      footerRender={footerRender}
+      footerRender={() => defaultFooterDom}
       menuDataRender={menuDataRender}
-      formatMessage={formatMessage}
       rightContentRender={() => <RightContent />}
-      {...props}
-      {...settings}
+      postMenuData={(menuData) => {
+        menuDataRef.current = menuData || [];
+        return menuData || [];
+      }}
     >
       <Authorized authority={authorized!.authority} noMatch={noMatch}>
         {children}

@@ -1,30 +1,29 @@
-import { Reducer } from 'redux';
-import { Effect } from 'dva';
 import { stringify } from 'querystring';
-import { router } from 'umi';
+import type { Reducer, Effect } from 'umi';
+import { history } from 'umi';
 
-import { fakeAccountLogin, getFakeCaptcha } from '@/services/login';
+import { fakeAccountLogin } from '@/services/login';
 import { setAuthority } from '@/utils/authority';
 import { getPageQuery } from '@/utils/utils';
+import { message } from 'antd';
 
-export interface StateType {
+export type StateType = {
   status?: 'ok' | 'error';
   type?: string;
   currentAuthority?: 'user' | 'guest' | 'admin';
-}
+};
 
-export interface LoginModelType {
+export type LoginModelType = {
   namespace: string;
   state: StateType;
   effects: {
     login: Effect;
-    getCaptcha: Effect;
     logout: Effect;
   };
   reducers: {
     changeLoginStatus: Reducer<StateType>;
   };
-}
+};
 
 const Model: LoginModelType = {
   namespace: 'login',
@@ -44,6 +43,7 @@ const Model: LoginModelType = {
       if (response.status === 'ok') {
         const urlParams = new URL(window.location.href);
         const params = getPageQuery();
+        message.success('🎉 🎉 🎉  登录成功！');
         let { redirect } = params as { redirect: string };
         if (redirect) {
           const redirectUrlParams = new URL(redirect);
@@ -57,19 +57,15 @@ const Model: LoginModelType = {
             return;
           }
         }
-        router.replace(redirect || '/');
+        history.replace(redirect || '/');
       }
-    },
-
-    *getCaptcha({ payload }, { call }) {
-      yield call(getFakeCaptcha, payload);
     },
 
     logout() {
       const { redirect } = getPageQuery();
       // Note: There may be security issues, please note
       if (window.location.pathname !== '/user/login' && !redirect) {
-        router.replace({
+        history.replace({
           pathname: '/user/login',
           search: stringify({
             redirect: window.location.href,
